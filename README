@@ -1,0 +1,9 @@
+gitbrute brute-forces a pair of author+committer timestamps such that
+the resulting git commit hash your desired prefix.
+
+It will find the most recent time that satisifies your prefix.
+
+Shorter prefixes match more quickly, of course.  The author &
+committer timestamp are not kept in sync.
+
+Example: https://github.com/bradfitz/deadbeef
