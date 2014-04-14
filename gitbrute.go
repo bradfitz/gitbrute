@@ -178,7 +178,7 @@ func getDate(h []byte, rx *regexp.Regexp) (d date, idx int) {
 }
 
 func curHash() string {
-	all, err := exec.Command("git", "show", "--format=format:%H").Output()
+	all, err := exec.Command("git", "rev-parse", "HEAD").Output()
 	if err != nil {
 		log.Fatal(err)
 	}
