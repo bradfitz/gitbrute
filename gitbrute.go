@@ -67,12 +67,17 @@ func main() {
 
 	possibilities := make(chan try, 512)
 	go explore(possibilities)
+
 	winner := make(chan solution)
+	done := make(chan struct{})
+
 	for i := 0; i < *cpu; i++ {
-		go bruteForce(obj, winner, possibilities)
+		go bruteForce(obj, winner, possibilities, done)
 	}
 
 	w := <-winner
+	close(done)
+
 	cmd := exec.Command("git", "commit", "--amend", "--date="+w.author.String(), "--file=-")
 	cmd.Env = append([]string{"GIT_COMMITTER_DATE=" + w.committer.String()}, os.Environ()...)
 	cmd.Stdout = os.Stdout
@@ -91,7 +96,7 @@ var (
 	commiterDateRx = regexp.MustCompile(`(?m)^committer.+> (.+)`)
 )
 
-func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try) {
+func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, done <-chan struct{}) {
 	// blob is the blob to mutate in-place repatedly while testing
 	// whether we have a match.
 	blob := []byte(fmt.Sprintf("commit %d\x00%s", len(obj), obj))
@@ -103,17 +108,23 @@ func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try) {
 	hexBuf := make([]byte, 0, sha1.Size*2)
 
 	for t := range possibilities {
-		ad := date{startUnix - int64(t.authorBehind), authorDate.tz}
-		cd := date{startUnix - int64(t.commitBehind), commitDate.tz}
-		strconv.AppendInt(blob[:adatei], ad.n, 10)
-		strconv.AppendInt(blob[:cdatei], cd.n, 10)
-		s1.Reset()
-		s1.Write(blob)
-		if !bytes.HasPrefix(hexInPlace(s1.Sum(hexBuf[:0])), wantHexPrefix) {
-			continue
+		select {
+		case <-done:
+			return
+		default:
+			ad := date{startUnix - int64(t.authorBehind), authorDate.tz}
+			cd := date{startUnix - int64(t.commitBehind), commitDate.tz}
+			strconv.AppendInt(blob[:adatei], ad.n, 10)
+			strconv.AppendInt(blob[:cdatei], cd.n, 10)
+			s1.Reset()
+			s1.Write(blob)
+			if !bytes.HasPrefix(hexInPlace(s1.Sum(hexBuf[:0])), wantHexPrefix) {
+				continue
+			}
+
+			winner <- solution{ad, cd}
+			return
 		}
-		winner <- solution{ad, cd}
-		return // at least yield one goroutine's CPU for git commit to run.
 	}
 }
 
