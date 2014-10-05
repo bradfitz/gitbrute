@@ -1,7 +1,7 @@
 gitbrute brute-forces a pair of author+committer timestamps such that
 the resulting git commit has your desired prefix.
 
-It will find the most recent time that satisifies your prefix.
+It will find the most recent time that satisfies your prefix.
 
 Shorter prefixes match more quickly, of course. The author &
 committer timestamp are not kept in sync.
