@@ -7,3 +7,9 @@ Shorter prefixes match more quickly, of course. The author &
 committer timestamp are not kept in sync.
 
 Example: https://github.com/bradfitz/deadbeef
+
+Usage:
+
+    go run gitbrute.go --prefix 000000
+
+This amends the last commit of the current repository.
