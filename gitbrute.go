@@ -44,6 +44,10 @@ var (
 	startUnix = start.Unix()
 )
 
+var (
+	bytePrefix, bytePattern []byte
+)
+
 func main() {
 	flag.Parse()
 	if *prefix == "" && *pattern == "" {
@@ -54,16 +58,18 @@ func main() {
 		if _, err := strconv.ParseInt(*prefix, 16, 64); err != nil {
 			log.Fatalf("Prefix %q isn't hex.", *prefix)
 		}
+		bytePrefix = []byte(*prefix)
 	}
 
 	if *pattern != "" {
-		if _, err := strconv.ParseInt(*prefix, 2, 64); err != nil {
+		if _, err := strconv.ParseInt(*pattern, 2, 64); err != nil {
 			log.Fatalf("Pattern %q isn't binary.", *pattern)
 		}
+		bytePattern = []byte(*pattern)
 	}
 
 	hash := curHash()
-	if hashMatches(hash) && !*force {
+	if hashMatches([]byte(hash)) && !*force {
 		return
 	}
 
@@ -110,12 +116,24 @@ var (
 	commiterDateRx = regexp.MustCompile(`(?m)^committer.+> (.+)`)
 )
 
-func hashMatches(hash string) bool {
+func hashMatches(hash []byte) bool {
 	if *prefix != "" {
-		return strings.HasPrefix(hash, *prefix)
+		return bytes.HasPrefix(hash, bytePrefix)
 	}
 
-	return false
+	for i := 0; i < len(bytePattern); i++ {
+        if strings.IndexByte("01234567", hash[i]) > -1 {
+			if bytePattern[i] == '1' {
+				return false
+			}
+		} else {
+			if bytePattern[i] == '0' {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, done <-chan struct{}) {
@@ -126,7 +144,6 @@ func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, do
 	commitDate, cdatei := getDate(blob, commiterDateRx)
 
 	s1 := sha1.New()
-	wantHexPrefix := []byte(*prefix)
 	hexBuf := make([]byte, 0, sha1.Size*2)
 
 	for t := range possibilities {
@@ -140,7 +157,7 @@ func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, do
 			strconv.AppendInt(blob[:cdatei], cd.n, 10)
 			s1.Reset()
 			s1.Write(blob)
-			if !bytes.HasPrefix(hexInPlace(s1.Sum(hexBuf[:0])), wantHexPrefix) {
+			if !hashMatches(hexInPlace(s1.Sum(hexBuf[:0]))) {
 				continue
 			}
 
