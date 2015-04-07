@@ -33,9 +33,10 @@ import (
 )
 
 var (
-	prefix = flag.String("prefix", "bf", "Desired prefix")
-	force  = flag.Bool("force", false, "Re-run, even if current hash matches prefix")
-	cpu    = flag.Int("cpus", runtime.NumCPU(), "Number of CPUs to use. Defaults to number of processors.")
+	prefix  = flag.String("prefix", "", "Desired prefix")
+	force   = flag.Bool("force", false, "Re-run, even if current hash matches prefix")
+	cpu     = flag.Int("cpus", runtime.NumCPU(), "Number of CPUs to use. Defaults to number of processors.")
+	pattern = flag.String("pattern", "", "Desired pattern")
 )
 
 var (
@@ -45,13 +46,24 @@ var (
 
 func main() {
 	flag.Parse()
-	runtime.GOMAXPROCS(*cpu)
-	if _, err := strconv.ParseInt(*prefix, 16, 64); err != nil {
-		log.Fatalf("Prefix %q isn't hex.", *prefix)
+	if *prefix == "" && *pattern == "" {
+		log.Fatalf("Need prefix or pattern")
+	}
+
+	if *prefix != "" {
+		if _, err := strconv.ParseInt(*prefix, 16, 64); err != nil {
+			log.Fatalf("Prefix %q isn't hex.", *prefix)
+		}
+	}
+
+	if *pattern != "" {
+		if _, err := strconv.ParseInt(*prefix, 2, 64); err != nil {
+			log.Fatalf("Pattern %q isn't binary.", *pattern)
+		}
 	}
 
 	hash := curHash()
-	if strings.HasPrefix(hash, *prefix) && !*force {
+	if hashMatches(hash) && !*force {
 		return
 	}
 
@@ -64,6 +76,8 @@ func main() {
 		log.Fatalf("No \\n\\n found in %q", obj)
 	}
 	msg := obj[i+2:]
+
+	runtime.GOMAXPROCS(*cpu)
 
 	possibilities := make(chan try, 512)
 	go explore(possibilities)
@@ -95,6 +109,14 @@ var (
 	authorDateRx   = regexp.MustCompile(`(?m)^author.+> (.+)`)
 	commiterDateRx = regexp.MustCompile(`(?m)^committer.+> (.+)`)
 )
+
+func hashMatches(hash string) bool {
+	if *prefix != "" {
+		return strings.HasPrefix(hash, *prefix)
+	}
+
+	return false
+}
 
 func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, done <-chan struct{}) {
 	// blob is the blob to mutate in-place repatedly while testing
