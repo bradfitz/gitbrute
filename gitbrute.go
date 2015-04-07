@@ -45,7 +45,8 @@ var (
 )
 
 var (
-	bytePrefix, bytePattern []byte
+	bytePrefix []byte
+	patternRx *regexp.Regexp
 )
 
 func main() {
@@ -62,10 +63,7 @@ func main() {
 	}
 
 	if *pattern != "" {
-		if _, err := strconv.ParseInt(*pattern, 2, 64); err != nil {
-			log.Fatalf("Pattern %q isn't binary.", *pattern)
-		}
-		bytePattern = []byte(*pattern)
+		patternRx = regexp.MustCompile(*pattern)
 	}
 
 	hash := curHash()
@@ -121,16 +119,9 @@ func hashMatches(hash []byte) bool {
 		return bytes.HasPrefix(hash, bytePrefix)
 	}
 
-	for i := 0; i < len(bytePattern); i++ {
-        if strings.IndexByte("01234567", hash[i]) > -1 {
-			if bytePattern[i] == '1' {
-				return false
-			}
-		} else {
-			if bytePattern[i] == '0' {
-				return false
-			}
-		}
+	m := patternRx.FindSubmatchIndex(hash)
+	if m == nil {
+		return false
 	}
 
 	return true
