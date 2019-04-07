@@ -1,0 +1,24 @@
+.TH gitbrute 1 2019-04-06
+.SH NAME
+gitbrute \- brute-force a git commit hash to a given prefix
+.SH SYNOPSIS
+.B gitbrute
+.I -prefix
+deadbeef
+.SH DESCRIPTION
+.B gitbrute
+amends the top commit in a git repository, altering commit-time and
+author-time to have the commit's hash start with the given prefix.
+.SH OPTIONS
+.TP
+-prefix 000000
+Specifies the hash prefix to search for.  Obviously, the expected time
+required to find it grows exponentially with the prefix's length.
+.TP
+-force true
+If the current commit already matches the prefix, it will be replaced
+by another one.
+.TP
+-cpus 64
+Specifies the level of parallelism; defaults to number of online processors
+at startup.
