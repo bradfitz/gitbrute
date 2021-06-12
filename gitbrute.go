@@ -92,16 +92,16 @@ type solution struct {
 }
 
 var (
-	authorDateRx   = regexp.MustCompile(`(?m)^author.+> (.+)`)
-	commiterDateRx = regexp.MustCompile(`(?m)^committer.+> (.+)`)
+	authorDateRx    = regexp.MustCompile(`(?m)^author.+> (.+)`)
+	committerDateRx = regexp.MustCompile(`(?m)^committer.+> (.+)`)
 )
 
 func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, done <-chan struct{}) {
-	// blob is the blob to mutate in-place repatedly while testing
+	// blob is the blob to mutate in-place repeatedly while testing
 	// whether we have a match.
 	blob := []byte(fmt.Sprintf("commit %d\x00%s", len(obj), obj))
 	authorDate, adatei := getDate(blob, authorDateRx)
-	commitDate, cdatei := getDate(blob, commiterDateRx)
+	commitDate, cdatei := getDate(blob, committerDateRx)
 
 	s1 := sha1.New()
 	wantHexPrefix := []byte(*prefix)
