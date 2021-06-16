@@ -33,9 +33,10 @@ import (
 )
 
 var (
-	prefix = flag.String("prefix", "bf", "Desired prefix")
-	force  = flag.Bool("force", false, "Re-run, even if current hash matches prefix")
-	cpu    = flag.Int("cpus", runtime.NumCPU(), "Number of CPUs to use. Defaults to number of processors.")
+	prefix  = flag.String("prefix", "", "Desired prefix")
+	force   = flag.Bool("force", false, "Re-run, even if current hash matches prefix")
+	cpu     = flag.Int("cpus", runtime.NumCPU(), "Number of CPUs to use. Defaults to number of processors.")
+	pattern = flag.String("pattern", "", "Desired pattern")
 )
 
 var (
@@ -43,15 +44,30 @@ var (
 	startUnix = start.Unix()
 )
 
+var (
+	bytePrefix []byte
+	patternRx *regexp.Regexp
+)
+
 func main() {
 	flag.Parse()
-	runtime.GOMAXPROCS(*cpu)
-	if _, err := strconv.ParseInt(*prefix, 16, 64); err != nil {
-		log.Fatalf("Prefix %q isn't hex.", *prefix)
+	if *prefix == "" && *pattern == "" {
+		log.Fatalf("Need prefix or pattern")
+	}
+
+	if *prefix != "" {
+		if _, err := strconv.ParseInt(*prefix, 16, 64); err != nil {
+			log.Fatalf("Prefix %q isn't hex.", *prefix)
+		}
+		bytePrefix = []byte(*prefix)
+	}
+
+	if *pattern != "" {
+		patternRx = regexp.MustCompile(*pattern)
 	}
 
 	hash := curHash()
-	if strings.HasPrefix(hash, *prefix) && !*force {
+	if hashMatches([]byte(hash)) && !*force {
 		return
 	}
 
@@ -64,6 +80,8 @@ func main() {
 		log.Fatalf("No \\n\\n found in %q", obj)
 	}
 	msg := obj[i+2:]
+
+	runtime.GOMAXPROCS(*cpu)
 
 	possibilities := make(chan try, 512)
 	go explore(possibilities)
@@ -96,6 +114,19 @@ var (
 	committerDateRx = regexp.MustCompile(`(?m)^committer.+> (.+)`)
 )
 
+func hashMatches(hash []byte) bool {
+	if *prefix != "" {
+		return bytes.HasPrefix(hash, bytePrefix)
+	}
+
+	m := patternRx.FindSubmatchIndex(hash)
+	if m == nil {
+		return false
+	}
+
+	return true
+}
+
 func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, done <-chan struct{}) {
 	// blob is the blob to mutate in-place repeatedly while testing
 	// whether we have a match.
@@ -104,7 +135,6 @@ func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, do
 	commitDate, cdatei := getDate(blob, committerDateRx)
 
 	s1 := sha1.New()
-	wantHexPrefix := []byte(*prefix)
 	hexBuf := make([]byte, 0, sha1.Size*2)
 
 	for t := range possibilities {
@@ -118,7 +148,7 @@ func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, do
 			strconv.AppendInt(blob[:cdatei], cd.n, 10)
 			s1.Reset()
 			s1.Write(blob)
-			if !bytes.HasPrefix(hexInPlace(s1.Sum(hexBuf[:0])), wantHexPrefix) {
+			if !hashMatches(hexInPlace(s1.Sum(hexBuf[:0]))) {
 				continue
 			}
 
