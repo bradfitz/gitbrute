@@ -104,7 +104,7 @@ func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, do
 	commitDate, cdatei := getDate(blob, committerDateRx)
 
 	s1 := sha1.New()
-	wantHexPrefix := []byte(*prefix)
+	wantHexPrefix := []byte(strings.ToLower(*prefix))
 	hexBuf := make([]byte, 0, sha1.Size*2)
 
 	for t := range possibilities {
