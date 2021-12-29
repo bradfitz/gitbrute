@@ -29,18 +29,12 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var (
 	prefix = flag.String("prefix", "bf", "Desired prefix")
 	force  = flag.Bool("force", false, "Re-run, even if current hash matches prefix")
 	cpu    = flag.Int("cpus", runtime.NumCPU(), "Number of CPUs to use. Defaults to number of processors.")
-)
-
-var (
-	start     = time.Now()
-	startUnix = start.Unix()
 )
 
 func main() {
@@ -112,8 +106,8 @@ func bruteForce(obj []byte, winner chan<- solution, possibilities <-chan try, do
 		case <-done:
 			return
 		default:
-			ad := date{startUnix - int64(t.authorBehind), authorDate.tz}
-			cd := date{startUnix - int64(t.commitBehind), commitDate.tz}
+			ad := date{authorDate.n - int64(t.authorBehind), authorDate.tz}
+			cd := date{commitDate.n - int64(t.commitBehind), commitDate.tz}
 			strconv.AppendInt(blob[:adatei], ad.n, 10)
 			strconv.AppendInt(blob[:cdatei], cd.n, 10)
 			s1.Reset()
