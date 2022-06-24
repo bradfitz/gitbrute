@@ -78,7 +78,7 @@ func main() {
 	w := <-winner
 	close(done)
 
-	cmd := exec.Command("git", "commit", "--allow-empty", "--amend", "--date="+w.author.String(), "--file=-")
+	cmd := exec.Command("git", "commit", "--allow-empty", "--allow-empty-message", "--amend", "--date="+w.author.String(), "--file=-")
 	cmd.Env = append(os.Environ(), "GIT_COMMITTER_DATE="+w.committer.String())
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = bytes.NewReader(msg)
